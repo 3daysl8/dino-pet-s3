@@ -1,0 +1,31 @@
+dino-pet-s3
+Copyright 2026 Isaac Peterson
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes software from these projects, modified for this build:
+
+- Waveshare ESP32-S3-Touch-LCD-1.85C demo code
+  https://github.com/waveshareteam/ESP32-S3-Touch-LCD-1.85C (commit 8ead4a9)
+  Apache License 2.0. The firmware in firmware/ started as Waveshare's
+  ESP32-S3-Touch-LCD-1.85C-Test project; the board drivers under firmware/main/
+  and firmware/components/ come from it, several with changes.
+
+- Espressif Systems (Shanghai) Co. Ltd. components, via the Waveshare demo:
+  esp_lcd_st77916, esp_lcd_touch, esp_board_init
+  Apache License 2.0. Original copyright headers are kept in each file.
+
+It also includes:
+
+- Silkscreen font, Copyright 2001 The Silkscreen Project Authors
+  (tools/fonts/), SIL Open Font License 1.1,
+  see tools/fonts/OFL.txt. The LVGL font files in firmware/main/app/assets/
+  are generated from it.
+
+- Country data in bridge/countries.json, trimmed from mledoze/countries
+  https://github.com/mledoze/countries
+  Open Database License (ODbL) 1.0. This database is made available under the
+  ODbL; changes to it stay under the ODbL.
+
+"Tamagotchi" is a trademark of Bandai. This project is not affiliated with or
+endorsed by Bandai, Waveshare or Espressif.

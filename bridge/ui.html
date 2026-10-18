@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deadlee</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b18; --dim:#6f6a62; --line:#dedad1; --red:#d6342c; --red-ink:#fff;
+        --me:#e9e5dc; --ok:#1f7a3f; --bad:#b3261e; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#161513; --card:#211f1c; --ink:#f1ede6; --dim:#a39d93; --line:#38342f; --red:#ef5148; --red-ink:#1a0504;
+          --me:#34302a; --ok:#6fcf8e; --bad:#ff8a80; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, "Segoe UI", sans-serif;
+       display:flex; flex-direction:column; }
+header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); }
+h1 { font-size:18px; margin:0; letter-spacing:.02em; }
+h1 span { color:var(--red); }
+nav { display:flex; gap:4px; margin-left:auto; }
+button, select, input, textarea { font:inherit; color:inherit; }
+button { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:7px 12px; cursor:pointer; }
+button:hover { border-color:var(--dim); }
+button:disabled { opacity:.5; cursor:default; }
+button.main { background:var(--red); border-color:var(--red); color:var(--red-ink); font-weight:600; }
+nav button[aria-selected=true] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+select, input, textarea { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:7px 10px; }
+:focus-visible { outline:2px solid var(--red); outline-offset:1px; }
+main { flex:1; min-height:0; display:flex; flex-direction:column; width:100%; max-width:980px; margin:0 auto; padding:12px 16px; }
+section { flex:1; min-height:0; display:none; flex-direction:column; gap:10px; }
+section.on { display:flex; }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.dim { color:var(--dim); font-size:14px; }
+.grow { flex:1; min-width:0; }
+#log { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:4px 2px; }
+.msg { max-width:82%; padding:9px 12px; border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.msg.me { align-self:flex-end; background:var(--me); border-bottom-right-radius:4px; }
+.msg.pet { align-self:flex-start; background:var(--card); border:1px solid var(--line); border-bottom-left-radius:4px; }
+.msg.note { align-self:center; background:none; color:var(--dim); font-size:14px; text-align:center; padding:2px 8px; }
+#brain { flex-direction:row; gap:14px; }
+#files { width:210px; flex:none; overflow-y:auto; display:flex; flex-direction:column; gap:2px; }
+#files h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:10px 0 2px; }
+#files button { text-align:left; border-color:transparent; background:none; padding:6px 8px; }
+#files button[aria-current=true] { background:var(--card); border-color:var(--line); font-weight:600; }
+#editor { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+input[type=number] { width:5.5em; }
+textarea { flex:1; min-height:220px; resize:none; font:14px/1.5 ui-monospace, Consolas, monospace; width:100%; }
+pre { flex:1; min-height:0; overflow:auto; margin:0; background:var(--card); border:1px solid var(--line); border-radius:8px;
+      padding:12px; white-space:pre-wrap; font:14px/1.5 ui-monospace, Consolas, monospace; }
+pre.short { flex:none; max-height:38%; }
+details { border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--card); margin-bottom:6px; }
+summary { cursor:pointer; }
+#digest { overflow-y:auto; }
+#digest pre { flex:none; max-height:320px; }
+.ok { color:var(--ok); } .bad { color:var(--bad); }
+#gate { max-width:440px; margin:12vh auto 0; display:flex; flex-direction:column; gap:10px; padding:0 16px; }
+@media (max-width:640px) {
+  #brain { flex-direction:column; }
+  #files { width:auto; flex-direction:row; flex-wrap:wrap; overflow:visible; }
+  #files h2 { width:100%; margin:6px 0 0; }
+  .msg { max-width:92%; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1><span>&#9679;</span> Deadlee</h1>
+  <nav id="tabs" hidden>
+    <button data-tab="chat" aria-selected="true">Chat</button>
+    <button data-tab="brain">Brain</button>
+    <button data-tab="digest">Digest</button>
+  </nav>
+</header>
+
+<div id="gate" hidden>
+  <p>Enter the password to talk to Deadlee. It is kept in this browser only.</p>
+  <input id="token" type="password" autocomplete="off" autocapitalize="off" placeholder="Password">
+  <button class="main" id="unlock">Unlock</button>
+  <p class="dim" id="gateMsg">On your PC, <code>tools\deadlee-ui.ps1</code> opens this page already unlocked.</p>
+</div>
+
+<main id="app" hidden>
+  <section id="chat" class="on">
+    <div class="row">
+      <label class="dim" for="who">I am</label>
+      <select id="who"><option value="">not saying</option></select>
+      <label class="dim"><input type="checkbox" id="speak"> Speak replies</label>
+      <span class="grow"></span>
+      <button id="newChat" title="End this conversation so Deadlee re-reads the brain files">New conversation</button>
+    </div>
+    <div id="log" aria-live="polite"></div>
+    <form class="row" id="send">
+      <input class="grow" id="text" maxlength="300" autocomplete="off" placeholder="Say something to Deadlee">
+      <button class="main" id="sendBtn">Send</button>
+    </form>
+    <div class="dim">This is the same conversation and memory the toy uses. Timers, alarms, the night light and the radio only work from the toy.</div>
+  </section>
+
+  <section id="brain">
+    <div id="files"></div>
+    <div id="editor">
+      <div class="row">
+        <strong id="fileName">Pick a file</strong>
+        <span class="dim" id="count"></span>
+        <span class="grow"></span>
+        <button id="del" hidden>Delete skill</button>
+        <button class="main" id="save" disabled>Save</button>
+      </div>
+      <textarea id="body" spellcheck="false" disabled></textarea>
+      <div class="dim" id="status">Changes reach Deadlee at the start of the next conversation.</div>
+    </div>
+  </section>
+
+  <section id="digest">
+    <div class="row">
+      <span class="dim" id="health"></span>
+      <span class="grow"></span>
+      <button id="reload">Refresh</button>
+      <button id="lock">Forget token</button>
+    </div>
+    <div class="row">
+      <strong>Family calendar</strong>
+      <span class="dim" id="calInfo"></span>
+      <span class="grow"></span>
+      <button id="calSync">Sync now</button>
+    </div>
+    <pre id="cal" class="short"></pre>
+    <div class="row">
+      <strong>Bookshelf</strong>
+      <span class="dim" id="bookInfo">Books Deadlee can read aloud.</span>
+    </div>
+    <div id="books"></div>
+    <div class="row">
+      <input id="gutId" inputmode="numeric" size="8" placeholder="Number">
+      <input class="grow" id="gutStart" placeholder="Start at these words (optional)">
+      <button id="gutAdd">Add from Project Gutenberg</button>
+    </div>
+    <div class="row">
+      <strong>Maths game</strong>
+      <span class="dim" id="mathsInfo"></span>
+    </div>
+    <div id="maths"></div>
+    <div class="row">
+      <strong>Stories made with Deadlee</strong>
+      <span class="dim" id="storyInfo"></span>
+    </div>
+    <div id="stories"></div>
+    <strong>Nightly digest</strong>
+    <pre id="recs"></pre>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let token = '';
+try { token = localStorage.getItem('petToken') || ''; } catch (e) {}
+const hash = new URLSearchParams(location.hash.slice(1));
+if (hash.get('token')) {                       // opened from deadlee-ui.ps1: keep it, then hide it
+  token = hash.get('token');
+  try { localStorage.setItem('petToken', token); } catch (e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'X-Pet-Token': token, ...(opts.headers || {}) } });
+  if (r.status === 401) { showGate('That password was not accepted.'); throw new Error('bad token'); }
+  const type = r.headers.get('content-type') || '';
+  const data = type.includes('json') ? await r.json() : await r.text();
+  if (!r.ok) throw new Error((data && data.detail) || ('Server answered ' + r.status));
+  return data;
+}
+const json = (method, body) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+function showGate(msg) {
+  $('app').hidden = true; $('tabs').hidden = true; $('gate').hidden = false;
+  if (msg) { $('gateMsg').textContent = msg; $('gateMsg').className = 'bad'; }
+}
+async function start() {
+  if (!token) return showGate();
+  let list;
+  try { list = await api('/brain/files'); } catch (e) { if (e.message !== 'bad token') showGate('Could not reach the server: ' + e.message); return; }
+  $('gate').hidden = true; $('app').hidden = false; $('tabs').hidden = false;
+  const who = $('who');
+  for (const name of list.people) who.add(new Option(name[0].toUpperCase() + name.slice(1), name));
+  try { who.value = localStorage.getItem('petWho') || ''; $('speak').checked = localStorage.getItem('petSpeak') === '1'; } catch (e) {}
+  drawFiles(list.files);
+  $('text').focus();
+}
+$('unlock').onclick = () => {
+  token = $('token').value.trim();
+  try { localStorage.setItem('petToken', token); } catch (e) {}
+  start();
+};
+$('token').onkeydown = e => { if (e.key === 'Enter') $('unlock').click(); };
+$('lock').onclick = () => { try { localStorage.removeItem('petToken'); } catch (e) {} token = ''; location.reload(); };
+
+// ---- tabs
+$('tabs').onclick = e => {
+  const tab = e.target.dataset.tab;
+  if (!tab) return;
+  for (const b of $('tabs').children) b.setAttribute('aria-selected', b.dataset.tab === tab);
+  for (const s of document.querySelectorAll('section')) s.classList.toggle('on', s.id === tab);
+  if (tab === 'digest') loadDigest();
+};
+
+// ---- chat
+function say(kind, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + kind;
+  d.textContent = text;
+  $('log').append(d);
+  $('log').scrollTop = $('log').scrollHeight;
+  return d;
+}
+$('who').onchange = () => { try { localStorage.setItem('petWho', $('who').value); } catch (e) {} };
+$('speak').onchange = () => { try { localStorage.setItem('petSpeak', $('speak').checked ? '1' : '0'); } catch (e) {} };
+$('send').onsubmit = async e => {
+  e.preventDefault();
+  const text = $('text').value.trim();
+  if (!text) return;
+  $('text').value = '';
+  say('me', text);
+  const wait = say('note', 'Deadlee is thinking...');
+  $('sendBtn').disabled = true;
+  try {
+    const r = await api('/talk', json('POST', { text, speaker: $('who').value }));
+    wait.remove();
+    say('pet', r.reply);
+    if (r.story && !r.story.done) {                 // making a story: the two ideas as buttons
+      const row = document.createElement('div');
+      row.className = 'msg note row';
+      for (const idea of r.story.ideas) {
+        const b = document.createElement('button');
+        b.textContent = idea;
+        b.onclick = () => { row.remove(); $('text').value = idea; $('send').requestSubmit(); };
+        row.append(b);
+      }
+      const where = document.createElement('span');
+      where.textContent = 'Scene ' + r.story.scene + ' of ' + r.story.of + ', or type your own idea';
+      row.append(where);
+      $('log').append(row);
+      $('log').scrollTop = $('log').scrollHeight;
+    }
+    if (r.actions && r.actions.length)
+      say('note', 'Deadlee asked the toy to: ' + r.actions.map(a => a.type).join(', ') + '. Not done, because this is the web page.');
+    if (r.audio && $('speak').checked) new Audio(r.audio).play().catch(() => {});
+  } catch (err) {
+    wait.textContent = 'No reply: ' + err.message;
+    wait.classList.add('bad');
+  }
+  $('sendBtn').disabled = false;
+  $('text').focus();
+};
+async function newChat() {
+  await api('/talk/new', { method: 'POST' });
+  say('note', 'New conversation. Deadlee will re-read the brain files.');
+}
+$('newChat').onclick = () => newChat().catch(err => say('note', err.message));
+
+// ---- brain files
+let current = null, saved = '', cap = 0;
+const SKILL_START = '- Name of the skill: when someone asks about ..., do ... and answer with ...\n';
+function drawFiles(files) {
+  const box = $('files');
+  box.textContent = '';
+  const group = (title, list) => {
+    const h = document.createElement('h2'); h.textContent = title; box.append(h);
+    for (const f of list) {
+      const b = document.createElement('button');
+      b.textContent = f.path.replace(/^(people|skills)\//, '').replace(/\.md$/, '');
+      b.dataset.path = f.path;
+      b.setAttribute('aria-current', f.path === current);
+      b.onclick = () => openFile(f.path);
+      box.append(b);
+    }
+  };
+  group('Deadlee', files.filter(f => !f.path.includes('/')));
+  group('People', files.filter(f => f.path.startsWith('people/')));
+  group('Skills', files.filter(f => f.path.startsWith('skills/')));
+  const add = document.createElement('button');
+  add.textContent = '+ New skill';
+  add.onclick = newSkill;
+  box.append(add);
+}
+const dirty = () => current && $('body').value !== saved;
+function count() {
+  const n = $('body').value.length;
+  $('count').textContent = current ? n + ' / ' + cap + ' characters' : '';
+  $('count').className = n > cap ? 'bad' : 'dim';
+  $('save').disabled = !dirty() || n > cap;
+}
+function setStatus(text, cls) { $('status').textContent = text; $('status').className = cls || 'dim'; }
+function show(path, text, max) {
+  current = path; saved = text; cap = max;
+  $('fileName').textContent = path;
+  $('body').disabled = false;
+  $('body').value = text;
+  $('del').hidden = !path.startsWith('skills/');
+  for (const b of $('files').children) if (b.dataset.path) b.setAttribute('aria-current', b.dataset.path === path);
+  count();
+}
+async function openFile(path) {
+  if (dirty() && !confirm('Discard the unsaved changes to ' + current + '?')) return;
+  try {
+    const f = await api('/brain/file?path=' + encodeURIComponent(path));
+    show(f.path, f.text, f.cap);
+    setStatus('Changes reach Deadlee at the start of the next conversation.');
+  } catch (err) { setStatus(err.message, 'bad'); }
+}
+async function refreshFiles() { drawFiles((await api('/brain/files')).files); }
+async function newSkill() {
+  if (dirty() && !confirm('Discard the unsaved changes to ' + current + '?')) return;
+  const raw = prompt('Short name for the new skill (letters, numbers, dashes):');
+  if (!raw) return;
+  const name = raw.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20);
+  if (!name) return setStatus('That name has no letters or numbers in it.', 'bad');
+  show('skills/' + name + '.md', SKILL_START, 1500);
+  saved = '';                                   // so Save is enabled for the starter text
+  count();
+  setStatus('New skill, not saved yet. A skill is a short note telling Deadlee when and how to do something with the tools it has.');
+}
+$('body').oninput = count;
+$('save').onclick = async () => {
+  try {
+    const r = await api('/brain/file?path=' + encodeURIComponent(current), json('PUT', { text: $('body').value }));
+    saved = $('body').value.replace(/\r\n/g, '\n');
+    count();
+    setStatus('Saved. ' + (r.check ? 'Family check: ' + r.check + ' ' : '') + 'Press "New conversation" on the Chat tab to try it now.', 'ok');
+    refreshFiles();
+  } catch (err) { setStatus('Not saved: ' + err.message, 'bad'); }
+};
+$('del').onclick = async () => {
+  if (!confirm('Delete ' + current + '? This cannot be undone.')) return;
+  try {
+    if (saved !== '' || (await api('/brain/files')).files.some(f => f.path === current))
+      await api('/brain/file?path=' + encodeURIComponent(current), { method: 'DELETE' });
+    const gone = current;
+    current = null; saved = '';
+    $('fileName').textContent = 'Pick a file'; $('body').value = ''; $('body').disabled = true; $('del').hidden = true;
+    count();
+    setStatus('Deleted ' + gone + '.', 'ok');
+    refreshFiles();
+  } catch (err) { setStatus('Not deleted: ' + err.message, 'bad'); }
+};
+window.onbeforeunload = e => { if (dirty()) e.preventDefault(); };
+
+// ---- digest
+async function loadDigest() {
+  $('recs').textContent = 'Loading...';
+  try {
+    const h = await (await fetch('/health')).json();
+    $('health').textContent = 'Brain: ' + h.chat_model + (h.local_up ? ' (up)' : ' (DOWN, using the backup)') + '. Voice: ' + h.voice + '.';
+    showCal(await api('/calendar'));
+    showBooks((await api('/books')).books);
+    showStories(await api('/stories'));
+    showMaths(await api('/maths'));
+    $('recs').textContent = await api('/recommendations');
+  } catch (err) { $('recs').textContent = err.message; }
+}
+function showCal(c) {
+  if (!c.configured) {
+    $('calInfo').textContent = 'Not set up.';
+    $('cal').textContent = 'No calendar link yet. On your PC, run tools\\deadlee-calendar.ps1 and paste the private ICS link.';
+    return;
+  }
+  const when = c.synced ? new Date(c.synced * 1000).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : 'never';
+  $('calInfo').textContent = c.events + ' events, last synced ' + when + (c.error ? '. Last try failed (' + c.error + ').' : '.');
+  $('calInfo').className = c.error ? 'bad' : 'dim';
+  $('cal').textContent = c.view || 'Not synced yet.';
+}
+$('calSync').onclick = async () => {
+  $('calInfo').textContent = 'Syncing...';
+  try { showCal(await api('/calendar/sync', { method: 'POST' })); } catch (err) { $('calInfo').textContent = err.message; }
+};
+function showBooks(list) {
+  const box = $('books');
+  box.textContent = '';
+  if (!list.length) box.textContent = 'No books yet.';
+  for (const b of list) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const name = document.createElement('span');
+    name.className = 'grow';
+    name.textContent = b.title + (b.author ? ', ' + b.author : '') + ' (' + b.pages + ' pages, next is page ' + b.next_page + ')';
+    const del = document.createElement('button');
+    del.textContent = 'Remove';
+    del.onclick = async () => {
+      if (!confirm('Remove ' + b.title + ' from the bookshelf?')) return;
+      try { showBooks((await api('/books?name=' + encodeURIComponent(b.name), { method: 'DELETE' })).books); }
+      catch (err) { $('bookInfo').textContent = err.message; $('bookInfo').className = 'bad'; }
+    };
+    const page = document.createElement('input');
+    page.type = 'number'; page.min = 1; page.max = b.pages; page.value = b.next_page; page.size = 4;
+    page.title = 'The page Deadlee reads next';
+    page.setAttribute('aria-label', 'Next page for ' + b.title);
+    const set = document.createElement('button');
+    set.textContent = 'Set page';
+    set.onclick = async () => {
+      try {
+        showBooks((await api('/books/bookmark', json('POST', { name: b.name, page: parseInt(page.value, 10) }))).books);
+        $('bookInfo').textContent = b.title + ' will carry on from page ' + page.value + '.'; $('bookInfo').className = 'ok';
+      } catch (err) { $('bookInfo').textContent = err.message; $('bookInfo').className = 'bad'; }
+    };
+    row.append(name, page, set, del);
+    box.append(row);
+  }
+}
+$('gutAdd').onclick = async () => {
+  const id = parseInt($('gutId').value, 10);
+  if (!id) { $('bookInfo').textContent = 'Type the book\'s number from gutenberg.org first.'; $('bookInfo').className = 'bad'; return; }
+  $('bookInfo').textContent = 'Fetching...'; $('bookInfo').className = 'dim';
+  try {
+    const r = await api('/books', json('POST', { gutenberg: id, start: $('gutStart').value }));
+    showBooks(r.books);
+    $('bookInfo').textContent = 'Added: ' + r.result.replace(/^ok \(|\)$/g, '') + '.';
+    $('gutId').value = ''; $('gutStart').value = '';
+  } catch (err) { $('bookInfo').textContent = err.message; $('bookInfo').className = 'bad'; }
+};
+function showMaths(data) {
+  const box = $('maths');
+  box.textContent = '';
+  $('mathsInfo').textContent = data.settings.questions + ' questions a game. Say "let\'s do maths" to start.';
+  const names = Object.keys(data.progress);
+  if (!names.length) box.textContent = 'Nobody has played yet.';
+  for (const name of names) {
+    const p = data.progress[name];
+    const row = document.createElement('div');
+    row.className = 'row';
+    const text = document.createElement('span');
+    text.className = 'grow';
+    const games = p.games.slice(-5).map(g => g.date.slice(5) + ': ' + g.right + '/' + g.asked).join(', ');
+    text.textContent = name[0].toUpperCase() + name.slice(1) + ': level ' + p.level + ' (' + p.level_name + ')' + (games ? '. Recent games: ' + games + '.' : '');
+    const again = document.createElement('button');
+    again.textContent = 'Start over';
+    again.title = 'Forget the level and games; the next game starts from the starting level';
+    again.onclick = async () => {
+      if (!confirm('Forget ' + name + '\'s maths level and games?')) return;
+      try { showMaths(await api('/maths?name=' + encodeURIComponent(name), { method: 'DELETE' })); }
+      catch (err) { $('mathsInfo').textContent = err.message; $('mathsInfo').className = 'bad'; }
+    };
+    row.append(text, again);
+    box.append(row);
+  }
+}
+function showStories(data) {
+  const box = $('stories');
+  box.textContent = '';
+  const s = data.settings;
+  $('storyInfo').textContent = s.scenes + ' scenes each, up to ' + s.per_day + ' a day' + (s.not_after ? ', none started after ' + s.not_after : '') + '.';
+  if (!data.stories.length) box.textContent = 'No stories yet. Say "let\'s make a story about..." to Deadlee.';
+  for (const st of data.stories) {
+    const item = document.createElement('details');
+    const head = document.createElement('summary');
+    head.textContent = (st.title || st.idea) + ' (' + st.by + ', ' + new Date(st.started * 1000).toLocaleDateString() + (st.done ? '' : ', not finished') + ')';
+    const text = document.createElement('p');
+    text.style.whiteSpace = 'pre-wrap';
+    text.textContent = st.text;
+    const del = document.createElement('button');
+    del.textContent = 'Delete this story';
+    del.onclick = async () => {
+      if (!confirm('Delete "' + (st.title || st.idea) + '"? It also comes off the bookshelf.')) return;
+      try { showStories(await api('/stories?id=' + encodeURIComponent(st.id), { method: 'DELETE' })); showBooks((await api('/books')).books); }
+      catch (err) { $('storyInfo').textContent = err.message; $('storyInfo').className = 'bad'; }
+    };
+    item.append(head, text, del);
+    box.append(item);
+  }
+  if (data.friends && data.friends.length) {          // friends who can come back in new stories
+    const row = document.createElement('div');
+    row.className = 'row';
+    const label = document.createElement('span');
+    label.className = 'dim';
+    label.textContent = 'Friends who can come back:';
+    row.append(label);
+    for (const f of data.friends) {
+      const b = document.createElement('button');
+      b.textContent = f.name + ' \u00d7';
+      b.title = 'From ' + f.from + '. Click to stop this friend coming back.';
+      b.onclick = async () => {
+        if (!confirm('Stop ' + f.name + ' coming back in new stories?')) return;
+        try { showStories(await api('/stories/friend?name=' + encodeURIComponent(f.name), { method: 'DELETE' })); }
+        catch (err) { $('storyInfo').textContent = err.message; $('storyInfo').className = 'bad'; }
+      };
+      row.append(b);
+    }
+    box.append(row);
+  }
+}
+$('reload').onclick = loadDigest;
+
+start();
+</script>
+</body>
+</html>

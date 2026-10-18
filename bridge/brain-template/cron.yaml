@@ -1,0 +1,3 @@
+# Deadlee's scheduled jobs (Melbourne time). Each runs once a day at or after its time.
+nightly: 02:30        # tidy full notes files + write RECOMMENDATIONS.md
+today_card: 06:30     # weather + family dates + a fun fact, for the good-morning line

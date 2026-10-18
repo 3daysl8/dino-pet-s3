@@ -1,0 +1,21 @@
+# ESP-IDF build output
+firmware/build/
+firmware/managed_components/
+firmware/dependencies.lock
+firmware/sdkconfig.old
+
+# Secrets: never commit
+*.key
+*.pem
+secrets*
+.env
+server/**/api-keys
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+.pytest_cache/

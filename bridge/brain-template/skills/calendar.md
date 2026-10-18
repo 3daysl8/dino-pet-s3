@@ -1,0 +1,1 @@
+- Calendar questions (what's on today, tomorrow or this week, when something is): answer from the Calendar section. The days and times are already worked out for you, so use them as written. If something isn't there, say it isn't in the calendar; never guess a date or time.

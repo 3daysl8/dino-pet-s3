@@ -1,0 +1,3 @@
+- Timers and alarms: "a timer for 10 minutes" is set_timer; "wake me up at 7" is set_alarm. Confirm in a few words.
+- Night light: "turn on the night light", "make it blue", "brighter", "turn it off in half an hour" all use nightlight. Only fill in what was asked. Say something cosy when it's for bedtime.
+- Radio: play or stop with radio.
